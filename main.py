@@ -234,9 +234,13 @@ class gPotherSide:
 
             Import subscriptions from a local file
         """
-        for channel in opml.Importer(url).items:
-            self.subscribe(channel['url'])
+        self.subscribe_all([channel['url']
+                           for channel in opml.Importer(url).items])
     
+    def subscribe_all(self, urls):
+        for url in urls:
+            self.subscribe(url)
+
     @run_in_background_thread
     def subscribe(self, url):
         url = self.core.model.normalize_feed_url(url)
@@ -425,6 +429,21 @@ class gPotherSide:
             'can_search': provider.kind == provider.PROVIDER_SEARCH
         } for provider in sorted(registry.directory.select(select_provider), key=provider_sort_key, reverse=True)]
 
+
+    def load_opml_file(self, path):
+        print("load_opml_file %s" % path)
+        items = opml.Importer(path).items
+        podcast_urls = [podcast.url for podcast in self.core.model.get_podcasts()]
+        for podcast in items:
+            if podcast['url'] in podcast_urls:
+                podcast['sort'] = "1"
+                podcast['section'] = "already subscribed"
+            else:
+                podcast['sort'] = "0"
+                podcast['section'] = "new"
+        items = sorted(items, key=lambda x: (x['sort'] + x['title']))
+        return items
+
     def get_directory_entries(self, provider, query):
         def match_provider(p):
             return p.name == provider
@@ -563,6 +582,7 @@ show_episode = gpotherside.show_episode
 play_episode = gpotherside.play_episode
 import_opml = gpotherside.import_opml
 subscribe = gpotherside.subscribe
+subscribe_all = gpotherside.subscribe_all
 unsubscribe = gpotherside.unsubscribe
 check_for_episodes = gpotherside.check_for_episodes
 get_stats = gpotherside.get_stats
@@ -580,3 +600,4 @@ get_config_value = gpotherside.get_config_value
 get_directory_providers = gpotherside.get_directory_providers
 get_directory_entries = gpotherside.get_directory_entries
 show_podcast = gpotherside.show_podcast
+load_opml_file = gpotherside.load_opml_file

@@ -67,20 +67,6 @@ SlidePage {
                 },
             },
             {
-                label: 'Add from OPML',
-                callback: function () {
-                    var ctx = { py: py };
-                    pgst.loadPage('TextInputDialog.qml', {
-                        buttonText: 'Subscribe',
-                        placeholderText: 'OPML URL',
-                        pasteOnLoad: true,
-                        callback: function (url) {
-                            ctx.py.call('main.import_opml', [url]);
-                        }
-                    });
-                },
-            },
-            {
                 label: 'Discover new podcasts',
                 callback: function () {
                     py.call('main.get_directory_providers', [], function (result) {
@@ -100,6 +86,32 @@ SlidePage {
                         }
                         pgst.showSelection(items, 'Select provider');
                     });
+                },
+            },
+            {
+                label: 'Import OPML File',
+                callback: function () {
+                    var devel = false
+                    if(devel) {
+                        openFileNameReady("/mnt/sdcard/all-subscriptions.opml");
+                    } else if (platform.android) {
+
+                        var afd = Qt.createQmlObject('import org.thp.gpodder.android 1.0; AndroidFileDialog { }',
+                                      pgst,
+                                      "afd");
+                        if(afd == null){
+                            console.log("ERROR CREATING AFD");
+                            return;
+                        }
+                        afd.existingFileNameReady.connect(openFileNameReady);
+                        var success = afd.provideExistingFileName();
+                        if (!success) {
+                            console.log("Problem with JNI or sth like that...");
+                        }
+
+                    } else {
+                        pgst.loadPage('FileDialog.qml', { caller: page });
+                    }
                 },
             },
         ], undefined, undefined, true);
@@ -168,4 +180,26 @@ SlidePage {
             }
         }
     }
+
+    function openFileNameReady(path) {
+        console.log("openFileNameReady(", path, ")")
+        if(path) {
+            py.call('main.load_opml_file', [path], function (result) {
+                var items = [];
+                for (var i=0; i<result.length; i++) {
+                    (function (podcast) {
+                        items.push({
+                            title: podcast.title,
+                            url: podcast.url,
+                            section: podcast.section,
+                            selected: true,
+                            enabled: podcast.section == 'new'
+                        });
+                    })(result[i]);
+                }
+                pgst.loadPage("PodcastsImportPage.qml", {podcasts: items})
+            });
+        }
+    }
+
 }

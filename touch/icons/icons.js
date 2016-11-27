@@ -24,3 +24,5 @@ var tag_fill = '\ue02b';
 var headphones = '\ue061';
 var sleep = '\u263e';
 var stack = '\ue020';
+var check = '\u2717';
+var cross = '\u2713';
