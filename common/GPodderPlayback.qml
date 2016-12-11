@@ -210,8 +210,8 @@ MediaPlayer {
     }
 
     property var savePlaybackPositionTimer: Timer {
-        // Save position every minute during playback
-        interval: 60 * 1000
+        // Save position every 5s during playback
+        interval: 5 * 1000
         repeat: true
         running: player.isPlaying
         onTriggered: player.flushToDisk();
@@ -263,8 +263,10 @@ MediaPlayer {
             lastPosition = position;
             lastDuration = duration;
 
-            // Directly update the playback progress in the episode list
-            py.playbackProgress(episode, position / duration);
+            // send playback events to core, to not lose playback
+            // progress when opening shownotes in browser and android
+            // decides to kill the app
+            sendPositionToCore(position)
         }
     }
 }

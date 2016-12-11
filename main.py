@@ -368,7 +368,7 @@ class gPotherSide:
 
     def report_playback_event(self, episode_id, position_from, position_to, duration):
         episode = self._get_episode_by_id(episode_id)
-        print('Played', episode.title, 'from', position_from, 'to', position_to, 'of', duration)
+        print('Played', episode.title.encode('utf-8'), 'from', position_from, 'to', position_to, 'of', duration)
         episode.report_playback_event(position_from, position_to, duration)
         pyotherside.send('playback-progress', episode_id, self._get_playback_progress(episode))
 
