@@ -82,16 +82,16 @@ SlidePage {
 
             PLabel {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Util.formatPosition(slider.displayedValue/1000, player.duration/1000)
+                text: Util.formatPosition(slider.displayedValue/1000, player.length/1000)
                 color: Constants.colors.dialogText
             }
 
             PSlider {
                 id: slider
                 width: flickable.width
-                value: player.position
+                value: player.time
                 min: 0
-                max: player.duration
+                max: player.length
                 color: Constants.colors.playback
                 onValueChangeRequested: {
                     player.seekAndSync(newValue);

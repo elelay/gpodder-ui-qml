@@ -20,8 +20,9 @@
 
 import QtQuick 2.0
 import QtMultimedia 5.0
+import QmlVlc 0.1
 
-MediaPlayer {
+VlcPlayer {
     id: player
 
     property int episode: 0
@@ -32,7 +33,7 @@ MediaPlayer {
 
     property var queue: ([])
     signal queueUpdated()
-    property bool isPlaying: playbackState == MediaPlayer.PlayingState
+    property bool isPlaying: playing
 
     property bool inhibitPositionEvents: false
     property bool seekAfterPlay: false
@@ -52,9 +53,9 @@ MediaPlayer {
     }
 
     function togglePause() {
-        if (playbackState === MediaPlayer.PlayingState) {
+        if (playing) {
             pause();
-        } else if (playbackState === MediaPlayer.PausedState) {
+        } else if (state === VlcPlayer.Paused) {
             play();
         }
     }
@@ -111,9 +112,9 @@ MediaPlayer {
             player.podcast_title = episode.podcast_title;
             var source = episode.source;
             if (source.indexOf('/') === 0) {
-                player.source = 'file://' + source;
+                player.mrl = 'file://' + source;
             } else {
-                player.source = source;
+                player.mrl = source;
             }
             player.seekTargetSeconds = episode.position;
             seekAfterPlay = true;
@@ -129,16 +130,17 @@ MediaPlayer {
 
     function seekAndSync(target_position) {
         sendPositionToCore(lastPosition);
-        seek(target_position);
+        player.time = target_position;
         playedFrom = target_position;
         savePlaybackAfterStopTimer.restart();
     }
 
-    onPlaybackStateChanged: {
-        if (playbackState == MediaPlayer.PlayingState) {
-            if (!seekAfterPlay) {
-                player.playedFrom = position;
-            }
+    onStateChanged: {
+        console.log("onStateChanged", state, "position", player.position, "time", player.time, "length", player.length);
+        if (state == VlcPlayer.Playing) {
+           if (!seekAfterPlay) {
+               player.playedFrom = time;
+           }
         } else {
             sendPositionToCore(lastPosition);
             savePlaybackAfterStopTimer.restart();
@@ -203,10 +205,8 @@ MediaPlayer {
         return result;
     }
 
-    onStatusChanged: {
-        if (status === MediaPlayer.EndOfMedia) {
-            nextInQueueTimer.start();
-        }
+    onMediaPlayerEndReached: {
+	   nextInQueueTimer.start();
     }
 
     property var savePlaybackPositionTimer: Timer {
@@ -230,14 +230,15 @@ MediaPlayer {
         running: player.isPlaying && player.seekAfterPlay
 
         onTriggered: {
-            var targetPosition = player.seekTargetSeconds * 1000;
-            if (Math.abs(player.position - targetPosition) < 10 * interval) {
+            var targetPosition = Math.min(player.seekTargetSeconds * 1000, player.length - 1000);
+            console.log("seekAfterPlayTimer", player.seekTargetSeconds * 1000, "actual:", targetPosition, "/", player.length, "currently", player.time)
+            if (Math.abs(player.time - targetPosition) < 10 * interval) {
                 // We have seeked properly
                 player.inhibitPositionEvents = false;
                 player.seekAfterPlay = false;
             } else {
                 // Try to seek to the target position
-                player.seek(targetPosition);
+                player.time = targetPosition;
                 player.playedFrom = targetPosition;
             }
         }
@@ -260,13 +261,13 @@ MediaPlayer {
 
     onPositionChanged: {
         if (isPlaying && !inhibitPositionEvents) {
-            lastPosition = position;
-            lastDuration = duration;
+            lastPosition = time;
+            lastDuration = length;
 
             // send playback events to core, to not lose playback
             // progress when opening shownotes in browser and android
             // decides to kill the app
-            sendPositionToCore(position)
+            sendPositionToCore(time)
         }
     }
 }
